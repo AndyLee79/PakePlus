@@ -1,32 +1,569 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="stylesheet" href="styles.css" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus App</title>
-        <script type="module" src="/main.js" defer></script>
-    </head>
-
-    <body>
-        <main class="container">
-            <h1>Welcome to PakePlus</h1>
-            <form class="row" id="greet-form">
-                <input id="inputValue" placeholder="Enter a something..." />
-            </form>
-            <div class="resultBox">
-                <span>result: </span>
-                <span id="result"></span>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>福山正达四（2）班 - 随机点名系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        danger: '#EF4444',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .card-hover {
+                transition: all 0.3s ease;
+            }
+            .card-hover:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            .student-selected {
+                background-color: rgba(59, 130, 246, 0.15); /* 蓝色背景 */
+                border-left: 3px solid #3B82F6; /* 蓝色边框 */
+            }
+            .thumb-up-animation {
+                animation: thumbPulse 0.5s ease;
+            }
+            @keyframes thumbPulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.3); }
+                100% { transform: scale(1); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-sans text-dark">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 页面标题 -->
+        <header class="text-center mb-10">
+            <h1 class="text-[clamp(1.8rem,5vw,3rem)] font-bold text-primary text-shadow">
+                福山正达四（2）班 随机点名系统
+            </h1>
+            <div class="w-40 h-1 bg-accent mx-auto mt-4 rounded-full"></div>
+        </header>
+        
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- 学生名单（左侧，稍窄的布局） -->
+            <div class="lg:col-span-6">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden h-full flex flex-col">
+                    <div class="bg-primary/10 p-4 border-b border-primary/20">
+                        <h3 class="text-xl font-semibold flex items-center justify-between">
+                            <span><i class="fa fa-list text-primary mr-2"></i> 学生名单</span>
+                            <div class="flex gap-2">
+                                <span id="remaining-count" class="bg-secondary text-white text-sm py-1 px-3 rounded-full">剩余: 22人</span>
+                                <span id="selected-count" class="bg-primary text-white text-sm py-1 px-3 rounded-full">已选: 0人</span>
+                            </div>
+                        </h3>
+                    </div>
+                    
+                    <!-- 添加学生表单 -->
+                    <div class="p-4 border-b border-gray-100">
+                        <form id="add-form" class="flex gap-2">
+                            <input type="text" id="new-student" placeholder="输入学生姓名添加到名单" 
+                                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+                            <button type="button" id="add-button" class="bg-secondary hover:bg-secondary/90 text-white p-2 rounded-lg transition-all">
+                                <i class="fa fa-plus"></i> 添加
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- 学生列表（四列布局） -->
+                    <div id="student-list" class="flex-1 overflow-y-auto p-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <!-- 学生名单将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="invokeBox">
-                <button id="openUrl">open_url_browser</button>
-                <button id="openUrlNew">open_url_new</button>
-                <button id="runCommand">run_command</button>
-                <button id="downloadFile">download_file</button>
-                <button id="getExeDir">get_exe_dir</button>
-                <button id="getEnvVar">get_env_var</button>
-                <button id="findPort">find_port</button>
+            
+            <!-- 随机点名区域（右侧） -->
+            <div class="lg:col-span-6">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden h-full flex flex-col">
+                    <div class="bg-primary/10 p-4 border-b border-primary/20">
+                        <h3 class="text-xl font-semibold flex items-center">
+                            <i class="fa fa-random text-primary mr-2"></i> 随机点名
+                        </h3>
+                    </div>
+                    
+                    <div class="p-6 flex-1 flex flex-col">
+                        <!-- 显示被点到的学生 -->
+                        <div id="display-area" class="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl mb-6 border border-blue-100">
+                            <p id="selected-student" class="text-[clamp(2rem,6vw,4rem)] font-bold text-center text-primary transition-all duration-300">
+                                准备开始
+                            </p>
+                        </div>
+                        
+                        <!-- 点赞区域 -->
+                        <div id="like-section" class="mb-6 text-center hidden">
+                            <p class="text-gray-600 mb-2">为这位同学点赞!</p>
+                            <button id="like-btn" class="bg-danger hover:bg-danger/90 text-white text-xl py-2 px-6 rounded-full transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center mx-auto">
+                                <i class="fa fa-thumbs-up mr-2"></i> <span id="like-count">0</span>
+                            </button>
+                        </div>
+                        
+                        <!-- 控制按钮 -->
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                            <button id="toggle-btn" class="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center">
+                                <i class="fa fa-play mr-2"></i> 开始点名
+                            </button>
+                            <button id="reset-btn" class="flex-1 bg-dark hover:bg-dark/90 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center">
+                                <i class="fa fa-refresh mr-2"></i> 重置选中
+                            </button>
+							<!-- 新增清空点赞按钮 -->
+                            <button id="clear-likes-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center">
+                            <i class="fa fa-heart-o mr-2"></i> 清空点赞
+                            </button>
+							
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
-    </body>
+        
+        <!-- 页脚 -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>© 2025 福山正达四（2）班随机点名系统</p>
+        </footer>
+    </div>
+
+    <script>
+        // 初始学生名单
+        const initialStudents = [
+            "魏千惠", "孙睿谦", "李澳晨", "朱宣羽", "王艺博", "郭梦莹", 
+            "张文俊", "李延熙", "李昕睿", "张洛诚", "李铭宇", "龚建皓", 
+            "袁若乔", "吴培源", "董航辰", "李沐梓", "刘家瑶", "史君临", 
+            "王润景", "岳楷舜", "刘宗衡", "马鹏程"
+        ];
+        
+        // 当前学生名单
+        let students = [...initialStudents];
+        // 存储被选中的学生
+        let selectedStudents = [];
+        // 存储点赞数
+        let likeCounts = {};
+        // 当前选中的学生
+        let currentStudent = null;
+        
+        // DOM元素
+        const studentListContainer = document.getElementById('student-list').querySelector('div');
+        const remainingCountEl = document.getElementById('remaining-count');
+        const selectedCountEl = document.getElementById('selected-count');
+        const addFormEl = document.getElementById('add-form');
+        const newStudentEl = document.getElementById('new-student');
+        const addButtonEl = document.getElementById('add-button');
+        const selectedStudentEl = document.getElementById('selected-student');
+        const toggleBtnEl = document.getElementById('toggle-btn');
+        const resetBtnEl = document.getElementById('reset-btn');
+        const displayAreaEl = document.getElementById('display-area');
+        const likeSectionEl = document.getElementById('like-section');
+        const likeBtnEl = document.getElementById('like-btn');
+        const likeCountEl = document.getElementById('like-count');
+        
+        // 点名相关变量
+        let isRolling = false;
+        let rollInterval;
+        
+        // 初始化页面
+        function init() {
+            // 初始化点赞计数
+            students.forEach(student => {
+                likeCounts[student] = 0;
+            });
+            
+            renderStudentList();
+            updateCounters();
+            bindEvents();
+        }
+        
+        // 绑定所有事件
+        function bindEvents() {
+            // 添加学生按钮点击事件
+            addButtonEl.addEventListener('click', () => {
+                addStudent(newStudentEl.value);
+            });
+            
+            // 表单提交事件（防止意外提交）
+            addFormEl.addEventListener('submit', (e) => {
+                e.preventDefault();
+                addStudent(newStudentEl.value);
+            });
+            
+            // 回车键添加学生
+            newStudentEl.addEventListener('keydown', (e) => {
+                if (e.code === 'Enter') {
+                    e.preventDefault();
+                    addStudent(newStudentEl.value);
+                }
+            });
+            
+            // 点名按钮事件
+            toggleBtnEl.addEventListener('click', toggleRolling);
+            
+            // 重置按钮事件
+            resetBtnEl.addEventListener('click', resetSelected);
+            
+            // 点赞按钮事件
+            likeBtnEl.addEventListener('click', likeCurrentStudent);
+			
+			// 清空点赞按钮事件
+            document.getElementById('clear-likes-btn').addEventListener('click', clearAllLikes);
+             
+            // 键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                // 空格键控制开始/停止
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    toggleRolling();
+                }
+                
+                // R键重置选中状态
+                if (e.code === 'KeyR' && e.ctrlKey) {
+                    e.preventDefault();
+                    resetSelected();
+                }
+                
+                // L键点赞
+                if (e.code === 'KeyL' && !isRolling && currentStudent) {
+                    e.preventDefault();
+                    likeCurrentStudent();
+                }
+            });
+        }
+        
+        // 渲染学生列表（四列布局）
+        function renderStudentList() {
+            studentListContainer.innerHTML = '';
+            
+            if (students.length === 0) {
+                studentListContainer.innerHTML = `
+                    <div class="col-span-full text-center text-gray-400 py-8">
+                        <i class="fa fa-info-circle mb-2"></i>
+                        <p>暂无学生信息</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            students.forEach((student, index) => {
+                const studentEl = document.createElement('div');
+                // 检查是否是被选中的学生
+                const isSelected = selectedStudents.includes(student);
+                // 获取点赞数
+                const likes = likeCounts[student] || 0;
+                
+                // 构建点赞图标HTML（红色）
+                const likeIcon = likes > 0 ? 
+                    `<span class="ml-1 text-danger thumb-up-animation"><i class="fa fa-thumbs-up"></i> ${likes}</span>` : '';
+                
+                studentEl.className = `p-3 rounded-lg mb-2 transition-all card-hover flex items-center justify-between ${
+                    isSelected ? 'student-selected' : 'bg-gray-50 hover:bg-gray-100'
+                }`;
+                studentEl.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="font-medium">${student}</span>
+                        ${likeIcon}
+                    </div>
+                    <button class="delete-btn text-danger hover:text-danger/80 transition-colors text-sm opacity-0 hover:opacity-100" data-index="${index}">
+                        <i class="fa fa-times"></i>
+                    </button>
+                `;
+                studentListContainer.appendChild(studentEl);
+            });
+            
+            // 添加删除事件监听
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = parseInt(e.currentTarget.dataset.index);
+                    const studentName = students[index];
+                    
+                    // 如果删除的是被选中的学生，从选中列表中移除
+                    if (selectedStudents.includes(studentName)) {
+                        selectedStudents = selectedStudents.filter(name => name !== studentName);
+                    }
+                    
+                    deleteStudent(index);
+                });
+            });
+        }
+        
+        // 更新计数器
+        function updateCounters() {
+            const remaining = students.length - selectedStudents.length;
+            remainingCountEl.textContent = `剩余: ${remaining}人`;
+            selectedCountEl.textContent = `已选: ${selectedStudents.length}人`;
+        }
+        
+        // 添加学生
+        function addStudent(name) {
+            // 清除输入框首尾空格
+            const normalizedName = name.trim();
+            
+            // 验证输入
+            if (!normalizedName) {
+                showNotification('请输入学生姓名', 'warning');
+                newStudentEl.focus();
+                return;
+            }
+            
+            // 检查是否已存在
+            if (students.some(s => s.toLowerCase() === normalizedName.toLowerCase())) {
+                showNotification(`"${normalizedName}" 已在名单中`, 'info');
+                newStudentEl.focus();
+                return;
+            }
+            
+            // 添加新学生
+            students.push(normalizedName);
+            likeCounts[normalizedName] = 0; // 初始化点赞数
+            
+            // 重置输入框并保持焦点
+            newStudentEl.value = '';
+            newStudentEl.focus();
+            
+            // 更新UI
+            renderStudentList();
+            updateCounters();
+            
+            // 显示成功提示
+            showNotification(`已添加: ${normalizedName}`, 'success');
+            
+            // 添加成功动画反馈
+            const lastChild = studentListContainer.lastChild;
+            if (lastChild) {
+                lastChild.classList.add('bg-green-100');
+                setTimeout(() => {
+                    lastChild.classList.remove('bg-green-100');
+                }, 1000);
+            }
+        }
+        
+        // 删除学生
+        function deleteStudent(index) {
+            const deleted = students.splice(index, 1)[0];
+            delete likeCounts[deleted]; // 删除点赞记录
+            renderStudentList();
+            updateCounters();
+            showNotification(`已删除: ${deleted}`, 'danger');
+        }
+        
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            // 移除已存在的通知
+            const existingNotify = document.querySelector('.notification');
+            if (existingNotify) {
+                existingNotify.remove();
+            }
+            
+            // 创建通知元素
+            const notification = document.createElement('div');
+            let bgColor = 'bg-blue-500'; // 默认信息色
+            
+            // 根据类型设置颜色
+            switch(type) {
+                case 'success':
+                    bgColor = 'bg-green-500';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-500';
+                    break;
+                case 'danger':
+                    bgColor = 'bg-red-500';
+                    break;
+            }
+            
+            notification.className = `notification fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // 切换点名状态（开始/停止）
+        function toggleRolling() {
+            if (students.length === 0) {
+                showNotification('学生名单为空，无法点名', 'warning');
+                return;
+            }
+            
+            // 检查是否还有未选中的学生
+            const unselectedStudents = students.filter(s => !selectedStudents.includes(s));
+            if (unselectedStudents.length === 0 && !isRolling) {
+                showNotification('所有学生都已被点到，请重置后再试！', 'info');
+                return;
+            }
+            
+            if (isRolling) {
+                // 停止点名
+                stopRolling();
+            } else {
+                // 开始点名
+                startRolling();
+            }
+        }
+        
+        // 开始随机点名
+        function startRolling() {
+            isRolling = true;
+            toggleBtnEl.innerHTML = '<i class="fa fa-stop mr-2"></i> 停止';
+            toggleBtnEl.classList.remove('bg-primary', 'hover:bg-primary/90');
+            toggleBtnEl.classList.add('bg-accent', 'hover:bg-accent/90');
+            displayAreaEl.classList.add('ring-4', 'ring-primary/30', 'ring-offset-2');
+            selectedStudentEl.classList.add('animate-pulse');
+            likeSectionEl.classList.add('hidden'); // 隐藏点赞区域
+            
+            // 只从未选中的学生中随机选择
+            const unselectedStudents = students.filter(s => !selectedStudents.includes(s));
+            
+            // 快速切换显示的学生
+            rollInterval = setInterval(() => {
+                const randomIndex = Math.floor(Math.random() * unselectedStudents.length);
+                const randomStudent = unselectedStudents[randomIndex];
+                selectedStudentEl.textContent = randomStudent;
+            }, 80);
+        }
+        
+        // 停止随机点名
+        function stopRolling() {
+            clearInterval(rollInterval);
+            isRolling = false;
+            toggleBtnEl.innerHTML = '<i class="fa fa-play mr-2"></i> 开始点名';
+            toggleBtnEl.classList.remove('bg-accent', 'hover:bg-accent/90');
+            toggleBtnEl.classList.add('bg-primary', 'hover:bg-primary/90');
+            displayAreaEl.classList.remove('ring-4', 'ring-primary/30', 'ring-offset-2');
+            selectedStudentEl.classList.remove('animate-pulse');
+            
+            // 获取最终选中的学生
+            currentStudent = selectedStudentEl.textContent;
+            
+            // 添加到选中列表（如果不在列表中）
+            if (!selectedStudents.includes(currentStudent)) {
+                selectedStudents.push(currentStudent);
+            }
+            
+            // 更新计数器
+            updateCounters();
+            
+            // 更新列表显示，高亮选中的学生
+            renderStudentList();
+            
+            // 显示点赞区域并更新点赞数
+            likeSectionEl.classList.remove('hidden');
+            likeCountEl.textContent = likeCounts[currentStudent] || 0;
+            
+            // 选中效果动画
+            selectedStudentEl.classList.add('scale-110', 'text-primary');
+            setTimeout(() => {
+                selectedStudentEl.classList.remove('scale-110', 'text-primary');
+            }, 500);
+        }
+        
+        // 点赞功能
+        function likeCurrentStudent() {
+            if (!currentStudent) return;
+            
+            // 增加点赞数
+            likeCounts[currentStudent] = (likeCounts[currentStudent] || 0) + 1;
+            
+            // 更新显示
+            likeCountEl.textContent = likeCounts[currentStudent];
+            
+            // 点赞动画
+            likeBtnEl.classList.add('scale-110');
+            setTimeout(() => {
+                likeBtnEl.classList.remove('scale-110');
+            }, 300);
+            
+            // 更新学生列表中的点赞显示
+            renderStudentList();
+        }
+		
+		// 添加清空所有点赞的函数
+function clearAllLikes() {
+    // 重置所有点赞数
+    students.forEach(student => {
+        likeCounts[student] = 0;
+    });
+    
+    // 更新显示
+    if (currentStudent) {
+        likeCountEl.textContent = 0;
+    }
+    
+    // 重新渲染学生列表以移除点赞图标
+    renderStudentList();
+    
+    // 显示通知
+    showNotification('已清空所有点赞记录', 'success');
+    
+    // 添加动画效果
+    const clearBtn = document.getElementById('clear-likes-btn');
+    clearBtn.classList.add('scale-110');
+    setTimeout(() => {
+        clearBtn.classList.remove('scale-110');
+    }, 300);
+}
+        
+        // 重置功能：清空被选中的学生和点赞数
+        function resetSelected() {
+            // 停止任何正在进行的点名
+            if (isRolling) {
+                stopRolling();
+            }
+            
+            // 清空选中列表和当前选中
+            selectedStudents = [];
+            currentStudent = null;
+            
+            // 重置显示
+            selectedStudentEl.textContent = '准备开始';
+            likeSectionEl.classList.add('hidden');
+            
+            // 更新列表显示，移除所有选中状态
+            renderStudentList();
+            
+            // 更新计数器
+            updateCounters();
+            
+            // 重置动画效果
+            displayAreaEl.classList.add('bg-green-50');
+            setTimeout(() => {
+                displayAreaEl.classList.remove('bg-green-50');
+            }, 300);
+            
+            showNotification('已重置所有选中状态', 'success');
+        }
+        
+        // 初始化
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
 </html>
